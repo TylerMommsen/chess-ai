@@ -1,19 +1,19 @@
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 
-driver = webdriver.Chrome()
+import gui
 
-driver.get('https://chess.com')
+def open_browser():
+  driver = webdriver.Chrome()
 
-title = driver.title
+  driver.get('https://chess.com')
 
-driver.implicitly_wait(0.5)
+  driver.implicitly_wait(0.5)
 
-input("Press Enter to close the browser...")
+  input("Press Enter to close the browser...")
 
-coordinates = driver.find_element(By.XPATH, "//*[@id='board-play-computer']//*[name()='svg']")
-square_names = coordinates.find_elements(By.XPATH, ".//*")
+  driver.quit()
 
-print(square_names)
 
-driver.quit()
+def start_autoplay():
+  pass

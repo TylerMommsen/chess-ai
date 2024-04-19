@@ -1,2 +1,4 @@
 selenium==4.19.0
 customtkinter==5.2.2
+stockfish==3.28.0
+chess==1.10.0

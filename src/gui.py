@@ -1,27 +1,28 @@
-import tkinter
 import customtkinter
-from main import open_browser, start_autoplay
 
-# system settings
-customtkinter.set_appearance_mode("System")
-customtkinter.set_default_color_theme("green")
+from chessbot import ChessBot
 
-# app frame
-app = customtkinter.CTk()
-app.geometry("480x480")
-app.title('Chess AI')
+class GUI:
+  def __init__(self, app):
+    self.app = app
+    self.chess_bot = ChessBot()
 
-# font settings
-button_font = ("Roboto", 16, "bold")
+    app.geometry("480x480")
+    app.title("Chess AI Bot")
+    
+    self.button_font = ("Roboto", 16, "bold")
 
-# ui elements
-open_browser_btn = customtkinter.CTkButton(app, text="Open Browser", width=200, height=50, command=open_browser, font=button_font)
-open_browser_btn.pack(anchor='w', padx=10, pady=(10, 0))
+    self.open_browser_btn = customtkinter.CTkButton(app, text="Open Browser", width=200, height=50, command=self.chess_bot.open_browser, font=self.button_font)
+    self.open_browser_btn.pack(anchor='w', padx=10, pady=(10, 0))
 
-start_autoplay_btn = customtkinter.CTkButton(app, text="Start Autoplay", width=200, height=50, command=start_autoplay, font=button_font)
-start_autoplay_btn.pack(anchor='w', padx=10, pady=(10, 0))
-
-# run app
-app.mainloop()
+    self.run_bot_btn = customtkinter.CTkButton(app, text="Run Bot", width=200, height=50, command=self.chess_bot.run_bot, font=self.button_font)
+    self.run_bot_btn.pack(anchor='w', padx=10, pady=(10, 0))
 
 
+if __name__ == "__main__":
+  customtkinter.set_appearance_mode("System")
+  customtkinter.set_default_color_theme("green")
+  
+  app = customtkinter.CTk()
+  gui = GUI(app)
+  app.mainloop()

@@ -12,11 +12,11 @@ class GUI:
     
     self.button_font = ("Roboto", 16, "bold")
 
-    self.open_browser_btn = customtkinter.CTkButton(app, text="Open Browser", width=200, height=50, command=self.chess_bot.open_browser, font=self.button_font)
-    self.open_browser_btn.pack(anchor='w', padx=10, pady=(10, 0))
+    self.open_browser_btn = customtkinter.CTkButton(app, text="Open Browser", height=50, command=self.chess_bot.open_browser, font=self.button_font)
+    self.open_browser_btn.pack(fill=customtkinter.X, padx=10, pady=(10, 0))
 
-    self.run_bot_btn = customtkinter.CTkButton(app, text="Run Bot", width=200, height=50, command=self.chess_bot.run_bot, font=self.button_font)
-    self.run_bot_btn.pack(anchor='w', padx=10, pady=(10, 0))
+    self.run_bot_btn = customtkinter.CTkButton(app, text="Run Bot", height=50, command=self.chess_bot.run_bot, font=self.button_font)
+    self.run_bot_btn.pack(fill=customtkinter.X, padx=10, pady=(10, 0))
 
 
 if __name__ == "__main__":

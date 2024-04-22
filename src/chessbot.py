@@ -13,6 +13,7 @@ class ChessBot:
     self.stockfish = Stockfish(path='../stockfish/stockfish-windows-x86-64-avx2.exe')
     self.playing_as_white = None
     self.move_list_container = None
+    self.last_processed_move = 0 # tracks the last ply number processed
 
 
   # open up a chrome browser
@@ -157,24 +158,32 @@ class ChessBot:
 
   # get the real game updated/new moves and apply them to the internal board
   def update_moves(self):
-    moves = self.move_list_container.find_elements(By.CSS_SELECTOR, 'div.move [data-ply]')
-    
-    new_moves = [move for move in moves if "white node" in move.get_attribute("class") or "black node" in move.get_attribute("class")]
-    last_known = len(self.board.move_stack)
+    css_selector = f'div.move [data-ply="{self.last_processed_move + 1}"]'
+    new_moves = self.move_list_container.find_elements(By.CSS_SELECTOR, css_selector)
 
     # apply only new moves to the internal board
-    for move in new_moves[last_known:]:
-      move_text = move.text
-      try:
-        child = move.find_element(By.XPATH, "./*")
-        move_figurine = child.get_attribute("data-figurine")
-      except NoSuchElementException:
-        move_figurine = None
+    for move in new_moves:
+      if "white node" in move.get_attribute('class') or "black node" in move.get_attribute("class"):
+        move_text = move.text
+        move_ply = int(move.get_attribute('data-ply'))
+      
+        try:
+          child = move.find_element(By.XPATH, "./*")
+          move_figurine = child.get_attribute("data-figurine")
+        except NoSuchElementException:
+          move_figurine = None
         
-      if move_figurine != None:
-        self.board.push_uci(self.board.parse_san(move_figurine + move_text).uci())
-      else:
-        self.board.push_uci(self.board.parse_san(move_text).uci())
+        if move_figurine:
+          full_move = move_figurine + move_text
+        else:
+          full_move = move_text
+
+        self.board.push_uci(self.board.parse_san(full_move).uci())
+
+        self.last_processed_move = move_ply
+
+        print(move_ply)
+        print(full_move)
 
   
   # get the next best move
@@ -197,7 +206,7 @@ class ChessBot:
     self.is_white() # determine if you are playing as white or black
     self.set_move_list_container()
 
-    while not self.board.is_checkmate():
+    while True:
       self.update_moves()
 
       if (self.board.turn == chess.WHITE and self.playing_as_white) or (self.board.turn == chess.BLACK and not self.playing_as_white):
@@ -206,19 +215,22 @@ class ChessBot:
         self.make_move(best_move)
         self.update_moves()
 
-        if self.board.is_checkmate():
-          break
+
+      if self.board.is_checkmate():
+        self.last_processed_move = 0
+        break
 
 
       # wait for opponent to make move
+      css_selector = f'div.move [data-ply="{self.last_processed_move + 1}"]'
       while True:
         time.sleep(0.1)
-        moves = self.move_list_container.find_elements(By.CSS_SELECTOR, 'div.move [data-ply]')
-        new_moves = [move.text for move in moves if "white node" in move.get_attribute("class") or "black node" in move.get_attribute("class")]
-        last_known = self.board.move_stack
-        if len(new_moves) > len(last_known):
+        new_moves = self.move_list_container.find_elements(By.CSS_SELECTOR, css_selector)
+
+        if new_moves:
           self.update_moves()
           break
 
       if self.board.is_checkmate():
+        self.last_processed_move = 0
         break

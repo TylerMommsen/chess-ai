@@ -13,12 +13,16 @@ class ChessBot:
     self.stockfish = Stockfish(path='../stockfish/stockfish-windows-x86-64-avx2.exe')
     self.playing_as_white = None
     self.move_list_container = None
-    self.last_processed_move = 0 # tracks the last ply number processed
+    self.last_processed_move = 0 # tracks the last move number processed
+    self.is_different_html_structure = False # sometimes chess.com is a bitch and the html structure is weird in real games
 
 
   # open up a chrome browser
   def open_browser(self, event=None):
     options = webdriver.ChromeOptions()
+    options.add_experimental_option("excludeSwitches", ["enable-logging", "enable-automation"])
+    options.add_argument('--disable-blink-features=AutomationControlled')
+    options.add_experimental_option('useAutomationExtension', False)
     self.driver = webdriver.Chrome(options=options)
     self.driver.get('https://www.chess.com')
     input()
@@ -158,32 +162,56 @@ class ChessBot:
 
   # get the real game updated/new moves and apply them to the internal board
   def update_moves(self):
-    css_selector = f'div.move [data-ply="{self.last_processed_move + 1}"]'
+    if self.is_different_html_structure == False:
+      css_selector = f'div.move [data-ply="{self.last_processed_move + 1}"]'
+    else:
+      css_selector = f'div.main-line-row [data-node="0-{self.last_processed_move + 1}"]'
+
     new_moves = self.move_list_container.find_elements(By.CSS_SELECTOR, css_selector)
 
-    # apply only new moves to the internal board
-    for move in new_moves:
-      if "white node" in move.get_attribute('class') or "black node" in move.get_attribute("class"):
-        move_text = move.text
-        move_ply = int(move.get_attribute('data-ply'))
-      
-        try:
-          child = move.find_element(By.XPATH, "./*")
-          move_figurine = child.get_attribute("data-figurine")
-        except NoSuchElementException:
-          move_figurine = None
+    if self.is_different_html_structure == False:
+      # apply only new moves to the internal board
+      for move in new_moves:
+        if "white node" in move.get_attribute('class') or "black node" in move.get_attribute("class"):
+          move_text = move.text
+          move_ply = int(move.get_attribute('data-ply'))
         
-        if move_figurine:
-          full_move = move_figurine + move_text
+          try:
+            child = move.find_element(By.XPATH, "./*")
+            move_figurine = child.get_attribute("data-figurine")
+          except NoSuchElementException:
+            move_figurine = None
+          
+          if move_figurine:
+            full_move = move_figurine + move_text
+          else:
+            full_move = move_text
+
+          self.board.push_uci(self.board.parse_san(full_move).uci())
+
+          self.last_processed_move = move_ply
+    else:
+      for move in new_moves:
+        move_number = int(move.get_attribute("data-node")[2:])
+        child = move.find_element(By.XPATH, "./*")
+        move_text = child.text
+
+        try:
+          time.sleep(0.1)
+          figurine_elem = child.find_element(By.XPATH, "./*")
+          figurine = figurine_elem.get_attribute("data-figurine")
+        except NoSuchElementException:
+          figurine = None
+
+        if figurine:
+          full_move = figurine + move_text
         else:
           full_move = move_text
 
         self.board.push_uci(self.board.parse_san(full_move).uci())
 
-        self.last_processed_move = move_ply
+        self.last_processed_move = move_number
 
-        print(move_ply)
-        print(full_move)
 
   
   # get the next best move
@@ -198,13 +226,29 @@ class ChessBot:
       return best_move
     
     return None
+  
+  # sometimes the structure of the site is different idfk why
+  def check_website_html(self):
+    try:
+      class_name = 'timestamps-with-base-time'
+      diff_structure = self.move_list_container.find_elements(By.CLASS_NAME, class_name)
+
+      if diff_structure:
+        self.is_different_html_structure = True
+        self.last_processed_move = -1
+      else:
+        self.is_different_html_structure = False
+        self.last_processed_move = 0
+    except:
+      return
 
 
   # start the bot loop until checkmate is reached
   def run_bot(self, event=None):
+    self.set_move_list_container()
+    self.check_website_html()
     self.board.reset() # set up board to default position
     self.is_white() # determine if you are playing as white or black
-    self.set_move_list_container()
 
     while True:
       self.update_moves()
@@ -217,14 +261,18 @@ class ChessBot:
 
 
       if self.board.is_checkmate():
-        self.last_processed_move = 0
         break
 
 
       # wait for opponent to make move
-      css_selector = f'div.move [data-ply="{self.last_processed_move + 1}"]'
+      if self.is_different_html_structure == False:
+        css_selector = f'div.move [data-ply="{self.last_processed_move + 1}"]'
+      else:
+        css_selector = f'div.main-line-row [data-node="0-{self.last_processed_move + 1}"]'
+
       while True:
         time.sleep(0.1)
+
         new_moves = self.move_list_container.find_elements(By.CSS_SELECTOR, css_selector)
 
         if new_moves:
@@ -232,5 +280,4 @@ class ChessBot:
           break
 
       if self.board.is_checkmate():
-        self.last_processed_move = 0
         break
